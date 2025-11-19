@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ESP32 Tracker - Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body, html { height:100%; margin:0; padding:0; }
+    #map { height:100%; width:100%; }
+    .info { 
+      position:absolute; 
+      z-index:1000; 
+      top:10px; 
+      left:10px; 
+      background:rgba(255,255,255,0.9); 
+      padding:8px; 
+      border-radius:6px; 
+      font-family: Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div class="info" id="info">Cargando...</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // Inicializa mapa
+  var map = L.map('map').setView([-12.04, -76.95], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(map);
+
+  var marker = null;
+
+  async function update() {
+    try {
+      // Trae latest.json desde el servidor
+      const res = await fetch('/public/latest.json?ts=' + Date.now());
+      if (!res.ok) throw "No se pudo obtener latest.json";
+      const j = await res.json();
+
+      if (j.lat && j.lon) {
+        var lat = parseFloat(j.lat);
+        var lon = parseFloat(j.lon);
+
+        if (!marker) {
+          // Crea marcador por primera vez
+          marker = L.marker([lat, lon]).addTo(map);
+          map.setView([lat, lon], 16);
+        } else {
+          // Actualiza posición del marcador
+          marker.setLatLng([lat, lon]);
+        }
+
+        document.getElementById('info').innerText = 
+          "Device: " + j.id + " | " + lat.toFixed(6) + ", " + lon.toFixed(6);
+
+      } else {
+        document.getElementById('info').innerText = "Sin datos";
+      }
+    } catch(e) {
+      document.getElementById('info').innerText = "Error: " + e;
+      console.error(e);
+    }
+  }
+
+  // Refresca cada 5 segundos
+  update();
+  setInterval(update, 5000);
+</script>
+</body>
+</html>
